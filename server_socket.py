@@ -20,6 +20,7 @@ class ServerSocket:
         # Threadsafe queues to put the received data
         self.IM_queue = queue.Queue()
         self.FILE_queue = queue.Queue()
+        self.SEND_queue = queue.Queue()
 
         self.listen()
     
@@ -35,7 +36,7 @@ class ServerSocket:
                 print(f"Accepted connection from {client_address}")
 
                 # CONNECTION IS OPEN HERE
-                create_threads(client_socket, self.FILE_queue, self.IM_queue, self.current_downloading_files)
+                create_threads(client_socket, self.FILE_queue, self.IM_queue, self.current_downloading_files, self.SEND_queue)
 
         except KeyboardInterrupt:
             self.server_socket.close()

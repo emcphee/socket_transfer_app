@@ -16,6 +16,7 @@ class ClientSocket:
         # Threadsafe queues to put the received data
         self.IM_queue = queue.Queue()
         self.FILE_queue = queue.Queue()
+        self.SEND_queue = queue.Queue()
 
         # Format should be: key=filename, value=remaining_bytes
         self.current_downloading_files = dict()
@@ -27,7 +28,7 @@ class ClientSocket:
             self.client_socket.connect(self.server_address)
             
             # SOCKET CONNECTION IS OPEN HERE.
-            create_threads(self.client_socket, self.FILE_queue, self.IM_queue, self.current_downloading_files)
+            create_threads(self.client_socket, self.FILE_queue, self.IM_queue, self.current_downloading_files, self.SEND_queue)
 
             print("Connection terminated.")
 
