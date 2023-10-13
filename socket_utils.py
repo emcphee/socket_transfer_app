@@ -36,7 +36,7 @@ def read_user_input(current_downloading_files, SEND_queue):
         
         elif message.startswith("/status"):
             for k,v in current_downloading_files.items():
-                print(k,v[0])
+                print(k,str(v[0] // 1024 // 1024) + "MB remaining")
 
         else:
             send_instant_message(message, SEND_queue)
@@ -44,20 +44,21 @@ def read_user_input(current_downloading_files, SEND_queue):
 def receive_chunks(socket, FILE_queue, IM_queue, current_downloading_files):
     while True:
         data = socket.recv(1024)
-        decoded = data.decode()
+        header = data[:64].decode()
 
-        if decoded == '':
+        if not data:
             break
 
-        if decoded[0] == 'M': # M is for an instant message
+        if header[0] == 'M': # M is for an instant message
             IM_queue.put(data[1:])
 
-        elif decoded[0] == 'I': # I is for initial file chunk. It contains the name and size of the file seperated by a comma.
-            name,size =  decoded[1:].split(',')
-            current_downloading_files[name] = (int(size), open(name, "wb"))
+        elif header[0] == 'I': # I is for initial file chunk. It contains the name and size of the file seperated by a comma.
+            name,size =  header[1:].split(',')
+            print(f"Starting to download {name}")
+            current_downloading_files[name] = (int(size), open('downloads/' + name, "wb"))
 
-        elif decoded[0] == 'F': # F is for any file chunks after the initial (content containing chunks)
-            filename = decoded[1:64].rstrip('\n')
+        elif header[0] == 'F': # F is for any file chunks after the initial (content containing chunks)
+            filename = header[1:].rstrip('\n')
             FILE_queue.put( (filename, data[64:]) )
         
         else:
@@ -66,6 +67,9 @@ def receive_chunks(socket, FILE_queue, IM_queue, current_downloading_files):
 def send_chunks(socket, SEND_queue):
     while True:
         chunk = SEND_queue.get()
+        if len(chunk) != 1024:
+            print("Invalid Chunk Size, Aborting Send")
+            pass
         socket.send(chunk)
 
 def send_instant_message(message, SEND_queue):
@@ -85,26 +89,23 @@ def send_initial_file_chunk(filesize, filename, SEND_queue):
     SEND_queue.put(chunk.encode())
 
 def send_file(filename, SEND_queue):
-    header = 'F'
-    chunk = (header + filename).ljust(64, '\n')
+    header = ('F' + filename).ljust(64, '\n')
 
     with open(filename, 'rb') as file:
-        data = file.read(960).decode()  # Read and send the file in chunks of 960 bytes
-        while data:
-            #print(f"Bytes Remaining for {filename}: {bytes_remaining}")
-            next_chunk = ((chunk + data).rjust(1024, '\n')).encode()
-            
-            SEND_queue.put(next_chunk)
-            
-            #time.sleep(0.01) # For some reason, not sleeping here causes chunks to be send incorrectly
+        while True:
+            data = file.read(960)
+            if not data:
+                print(f"Successfully sent file: {filename}")
+                break  # End of file
 
-            data = file.read(960).decode()
-    print(f"Successfully sent file: {filename}")
+            chunk = header.encode() + data + b'\n' * (960 - len(data))
+
+            SEND_queue.put(chunk)
 
 def process_file_content(FILE_queue, current_downloading_files):
     while True:
         filename,data = FILE_queue.get()
-        data = (data.decode().rstrip('\n')).encode()
+        data = data.rstrip(b'\n')
         
         res = current_downloading_files.get(filename)
         if res != None:
