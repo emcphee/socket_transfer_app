@@ -9,6 +9,8 @@ class ServerSocket:
         # Create a socket and bind it to the provided ip and port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+        self.server_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
         self.server_address = (ip, port)
         self.server_socket.bind(self.server_address)
 
