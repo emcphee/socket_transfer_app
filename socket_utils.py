@@ -44,7 +44,12 @@ def read_user_input(current_downloading_files, SEND_queue):
 def receive_chunks(socket, FILE_queue, IM_queue, current_downloading_files):
     while True:
         data = socket.recv(1024)
-        header = data[:64].decode()
+
+        try:
+            header = data[:64].decode()
+        except:
+            print("Failed to decode header.")
+            continue
 
         if not data:
             break
@@ -63,10 +68,16 @@ def receive_chunks(socket, FILE_queue, IM_queue, current_downloading_files):
         
         else:
             print(f"Bad Chunk Recevied")
+        
+        print(f"Received type: {header[0]}")
+        
 
 def send_chunks(socket, SEND_queue):
     while True:
         chunk = SEND_queue.get()
+
+        print(f"Sending Chunk With Type: {chunk[0:1].decode()}")
+
         if len(chunk) != 1024:
             print("Invalid Chunk Size, Aborting Send")
             pass
