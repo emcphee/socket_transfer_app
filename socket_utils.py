@@ -74,17 +74,21 @@ def receive_chunks(socket, FILE_queue, IM_queue, current_downloading_files):
 
 def send_chunks(socket, SEND_queue):
     while True:
-        chunk = SEND_queue.get()
+        header,data = SEND_queue.get()
 
-        print(f"Sending Chunk With Type: {chunk[0:1].decode()}")
-
-        chunk_padded = chunk + bytearray(b'\n' * 1024 - len(chunk))
-        socket.send(chunk_padded)
+        print(f"Sending Chunk With Type: {header[0]}")
+        if header[0] == 'M' or header[0] == 'I':
+            chunk = header.ljust(1024, '\n').encode()
+    
+        elif header[0] == 'F':
+            unpadded = header.ljust(64, '\n').encode() + data
+            chunk = unpadded + b'\n' * (1024 - len(unpadded))
+        
+        socket.send(chunk)
 
 def send_instant_message(message, SEND_queue):
-    header = 'M'
-    chunk = header + message
-    SEND_queue.put(chunk.encode())
+    header = 'M' + message
+    SEND_queue.put( (header, None) )
 
 def process_instant_messages(IM_queue):
     while True:
@@ -93,12 +97,11 @@ def process_instant_messages(IM_queue):
         print(f"Received Message: {data.decode().rstrip(newline)}")
 
 def send_initial_file_chunk(filesize, filename, SEND_queue):
-    header = 'I'
-    chunk = header + filename + ',' + str(filesize)
-    SEND_queue.put(chunk.encode())
+    header = 'I' + filename + ',' + str(filesize)
+    SEND_queue.put( (header, None) )
 
 def send_file(filename, SEND_queue):
-    header = ('F' + filename).ljust(64, '\n')
+    header = 'F' + filename
 
     with open(filename, 'rb') as file:
         while True:
@@ -107,9 +110,7 @@ def send_file(filename, SEND_queue):
                 print(f"Successfully sent file: {filename}")
                 break  # End of file
 
-            chunk = header.encode() + data
-
-            SEND_queue.put(chunk)
+            SEND_queue.put( (header, data) )
 
 def process_file_content(FILE_queue, current_downloading_files):
     while True:
