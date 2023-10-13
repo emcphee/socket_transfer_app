@@ -78,7 +78,7 @@ def send_chunks(socket, SEND_queue):
 
         print(f"Sending Chunk With Type: {chunk[0:1].decode()}")
 
-        chunk_padded = chunk + bytearray(b'\n' * 1024 - len(chunk))
+        chunk_padded = chunk + b'\n' * (1024 - len(chunk))
         socket.send(chunk_padded)
 
 def send_instant_message(message, SEND_queue):

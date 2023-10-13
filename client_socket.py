@@ -8,6 +8,9 @@ class ClientSocket:
     def __init__(self, ip, port):
         # Create a socket and bind it to the provided ip and port
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        self.client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
+        self.client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024)
         
         self.server_address = (ip, port)
 
