@@ -78,14 +78,12 @@ def send_chunks(socket, SEND_queue):
 
         print(f"Sending Chunk With Type: {chunk[0:1].decode()}")
 
-        if len(chunk) != 1024:
-            print("Invalid Chunk Size, Aborting Send")
-            pass
-        socket.send(chunk)
+        chunk_padded = chunk + bytearray(b'\n' * 1024 - len(chunk))
+        socket.send(chunk_padded)
 
 def send_instant_message(message, SEND_queue):
     header = 'M'
-    chunk = (header + message).ljust(1024, '\n')
+    chunk = header + message
     SEND_queue.put(chunk.encode())
 
 def process_instant_messages(IM_queue):
@@ -96,7 +94,7 @@ def process_instant_messages(IM_queue):
 
 def send_initial_file_chunk(filesize, filename, SEND_queue):
     header = 'I'
-    chunk = (header + filename + ',' + str(filesize)).ljust(1024, '\n')
+    chunk = header + filename + ',' + str(filesize)
     SEND_queue.put(chunk.encode())
 
 def send_file(filename, SEND_queue):
@@ -109,7 +107,7 @@ def send_file(filename, SEND_queue):
                 print(f"Successfully sent file: {filename}")
                 break  # End of file
 
-            chunk = header.encode() + data + b'\n' * (960 - len(data))
+            chunk = header.encode() + data
 
             SEND_queue.put(chunk)
 
