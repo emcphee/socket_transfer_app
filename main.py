@@ -8,5 +8,5 @@ from server_socket import ServerSocket
 # File names cannot exceed 63 characters.
 
 
-ServerSocket('107.173.15.218', 8888)
-#ClientSocket('107.173.15.218', 8888)
+ServerSocket('127.0.0.1', 8888)
+#ClientSocket('127.0.0.1', 8888)

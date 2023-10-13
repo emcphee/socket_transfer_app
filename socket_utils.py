@@ -3,8 +3,9 @@ import os
 import threading
 import time
 
-def create_threads(socket, FILE_queue, IM_queue, current_downloading_files, SEND_queue):
+# Creating all of the threads needed to operate the bidirection communiciation
 
+def create_threads(socket, FILE_queue, IM_queue, current_downloading_files, SEND_queue):
         receive_chunks_thread = threading.Thread(target=receive_chunks, args=(socket, FILE_queue, IM_queue, current_downloading_files))
         process_instant_messages_thread = threading.Thread(target=process_instant_messages, args=(IM_queue,))
         read_user_input_thread = threading.Thread(target=read_user_input, args=(current_downloading_files, SEND_queue))
@@ -23,11 +24,19 @@ def create_threads(socket, FILE_queue, IM_queue, current_downloading_files, SEND
         process_file_content_thread.join()
         send_chunks_thread.join()
 
+
+
+# -- USER INPUT -- #
+
+# Threaded while true loop to take in input and call functions or create threads needed
 def read_user_input(current_downloading_files, SEND_queue):
     while True:
         message = input()
         if message.startswith("/sendfile"):
             filename = message[10:]
+            if not os.path.exists(filename):
+                print("File doesn't exist.")
+                continue
             filesize = os.path.getsize(filename)
             send_initial_file_chunk(filesize, filename, SEND_queue)
 
@@ -36,11 +45,29 @@ def read_user_input(current_downloading_files, SEND_queue):
         
         elif message.startswith("/status"):
             for k,v in current_downloading_files.items():
-                print(k,str(v[0] // 1024 // 1024) + "MB remaining")
+                print(k,str(v[0] // 1024) + "KB remaining")
 
         else:
             send_instant_message(message, SEND_queue)
 
+
+# -- SOCKET COMMUNICATION -- #
+
+# Threaded while true loop to send chunks whenever they are available in the SEND_queue
+def send_chunks(socket, SEND_queue):
+    while True:
+        header,data = SEND_queue.get()
+
+        if header[0] == 'M' or header[0] == 'I':
+            chunk = header.ljust(64, '\n').encode()
+    
+        elif header[0] == 'F':
+            chunk = header.ljust(64, '\n').encode() + data
+
+        chunk_padded = chunk + b'\n' * (1024 - len(chunk))
+        socket.send(chunk_padded)
+
+# Threaded function to constantly read for chunks from the socket
 def receive_chunks(socket, FILE_queue, IM_queue, current_downloading_files):
     while True:
         data = socket.recv(1024)
@@ -67,55 +94,36 @@ def receive_chunks(socket, FILE_queue, IM_queue, current_downloading_files):
             FILE_queue.put( (filename, data[64:]) )
         
         else:
-            print(f"Bad Chunk Recevied")
-        
-        print(f"Received type: {header[0]}")
-        
+            print(f"Bad Chunk Recevied: header type = {header[0]}")
 
-def send_chunks(socket, SEND_queue):
-    while True:
-        header,data = SEND_queue.get()
 
-        print(f"Sending Chunk With Type: {header[0]}")
-        if header[0] == 'M' or header[0] == 'I':
-            chunk = header.ljust(1024, '\n').encode()
-    
-        elif header[0] == 'F':
-            unpadded = header.ljust(64, '\n').encode() + data
-            chunk = unpadded + b'\n' * (1024 - len(unpadded))
-        
-        socket.send(chunk)
-        print(f"Sending Chunk With Type: {chunk[0:1].decode()}")
 
-        chunk_padded = chunk + b'\n' * (1024 - len(chunk))
-        socket.send(chunk_padded)
 
+# -- ADDING TO SEND_queue -- #
+
+# Adds a IM to the send queue
 def send_instant_message(message, SEND_queue):
     header = 'M' + message
     SEND_queue.put( (header, None) )
 
+# Adds an initial file chunk to the SEND_queue
+def send_initial_file_chunk(filesize, filename, SEND_queue):
+    header = 'I' + filename + ',' + str(filesize)
+    SEND_queue.put( (header, None) )
+
+
+
+
+# -- PROCESSING RECEIVED CHUNKS -- #
+
+# Threaded while true loop to read out IMs from the IM queue to the console
 def process_instant_messages(IM_queue):
     while True:
         data = IM_queue.get()
         newline = '\n'
         print(f"Received Message: {data.decode().rstrip(newline)}")
 
-def send_initial_file_chunk(filesize, filename, SEND_queue):
-    header = 'I' + filename + ',' + str(filesize)
-    SEND_queue.put( (header, None) )
-
-def send_file(filename, SEND_queue):
-    header = 'F' + filename
-
-    with open(filename, 'rb') as file:
-        while True:
-            data = file.read(960)
-            if not data:
-                print(f"Successfully sent file: {filename}")
-                break  # End of file
-
-            SEND_queue.put( (header, data) )
-
+# Writes file chunks to the correct file pointer
 def process_file_content(FILE_queue, current_downloading_files):
     while True:
         filename,data = FILE_queue.get()
@@ -131,3 +139,22 @@ def process_file_content(FILE_queue, current_downloading_files):
                 print(f"Successfully downloaded {filename}")
             else:
                 current_downloading_files[filename] = (bytes_remaining - 960, fp)
+
+
+
+
+# -- FILE SEND THREAD -- #
+
+# This is a function which is created in a new thread for each new file send.
+# It opens, reads chunks of data from the file, and adds them, to the SEND_queue
+def send_file(filename, SEND_queue):
+    header = 'F' + filename
+
+    with open(filename, 'rb') as file:
+        while True:
+            data = file.read(960)
+            if not data:
+                print(f"Successfully sent file: {filename}")
+                break  # End of file
+
+            SEND_queue.put( (header, data) )

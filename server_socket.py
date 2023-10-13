@@ -12,6 +12,8 @@ class ServerSocket:
         self.server_address = (ip, port)
         self.server_socket.bind(self.server_address)
 
+        # --- Here I define the variables that will be shared by the threads.
+
         # Format should be: key=filename, value=remaining_bytes
         self.current_downloading_files = dict()
 
