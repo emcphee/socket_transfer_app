@@ -25,7 +25,7 @@ class ClientSocket:
         try:
             self.client_socket.connect(self.server_address)
             
-            # SOCKET CONNECTION IS OPEN HERE.
+            # SOCKET CONNECTION IS OPEN HERE
             create_threads(self.client_socket, self.FILE_queue, self.IM_queue, self.current_downloading_files, self.SEND_queue)
 
             print("Connection terminated.")

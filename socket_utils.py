@@ -4,7 +4,6 @@ import threading
 import time
 
 # Creating all of the threads needed to operate the bidirection communiciation
-
 def create_threads(socket, FILE_queue, IM_queue, current_downloading_files, SEND_queue):
         receive_chunks_thread = threading.Thread(target=receive_chunks, args=(socket, FILE_queue, IM_queue, current_downloading_files))
         process_instant_messages_thread = threading.Thread(target=process_instant_messages, args=(IM_queue,))
@@ -84,7 +83,7 @@ def receive_chunks(socket, FILE_queue, IM_queue, current_downloading_files):
         if header[0] == 'M': # M is for an instant message
             IM_queue.put(data[1:])
 
-        elif header[0] == 'I': # I is for initial file chunk. It contains the name and size of the file seperated by a comma.
+        elif header[0] == 'I': # I is for initial file chunk. It contains the name and size of the file seperated by a comma
             name,size =  header[1:].split(',')
             print(f"Starting to download {name}")
             current_downloading_files[name] = (int(size), open('downloads/' + name, "wb"))
@@ -145,7 +144,7 @@ def process_file_content(FILE_queue, current_downloading_files):
 
 # -- FILE SEND THREAD -- #
 
-# This is a function which is created in a new thread for each new file send.
+# This is a function which is created in a new thread for each new file send
 # It opens, reads chunks of data from the file, and adds them, to the SEND_queue
 def send_file(filename, SEND_queue):
     header = 'F' + filename
