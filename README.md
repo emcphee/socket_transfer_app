@@ -8,7 +8,7 @@ This project allows bidirectional simultaneous file transfer and messaging betwe
 1. Clone this repository to your local machine:
 
     ```
-    git clone github.com/emcphee/socket_transfer_app
+    git clone https://github.com/emcphee/socket_transfer_app
     ```
 
 2. Navigate to the project directory:
